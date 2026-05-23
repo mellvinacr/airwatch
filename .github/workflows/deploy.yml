@@ -39,6 +39,48 @@ jobs:
           username: ubuntu
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
+            name: CI/CD AirWatch Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./app
+          push: true
+          tags: 1752104/airwatch:v1.0.0
+
+  deploy-to-aws:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Deploy to AWS Kubernetes via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: 32.197.48.170
+          username: ubuntu
+          key: ${{ secrets.AWS_SSH_KEY }}
+          script: |
+            script: |
             # Buat folder kurbernetes jika belum ada di AWS Master
             mkdir -p ~/kurbernetes
             
@@ -49,6 +91,13 @@ jobs:
               cd ~/kurbernetes/airwatch && git pull origin main
             fi
             
-            # Nyalakan manifest Kubernetes secara otomatis!
             cd ~/kurbernetes/airwatch/k8s
+            
+            # 1. Paksa buat namespace duluan
+            kubectl apply -f namespace.yaml
+            
+            # 2. Kasih jeda 5 detik biar sistem k8s napas dulu
+            sleep 5
+            
+            # 3. Baru tembak semua manifest sisanya!
             kubectl apply -f .
