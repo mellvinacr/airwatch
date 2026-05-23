@@ -1,15 +1,3 @@
-# ─────────────────────────────────────────────────────────────
-# Ingress: airwatch-ingress
-# Pintu gerbang (gateway) dari internet ke Service.
-# Mengatur routing berbasis path (tanpa hostname restriction).
-#
-# Catatan AWS EC2:
-#   - Tidak menggunakan host spesifik agar bisa diakses
-#     via IP publik EC2 dari internet.
-#   - Pastikan nginx ingress controller sudah terinstall:
-#     kubectl apply -f https://raw.githubusercontent.com/kubernetes/ingress-nginx/controller-v1.8.2/deploy/static/provider/baremetal/deploy.yaml
-# ─────────────────────────────────────────────────────────────
-
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -20,24 +8,14 @@ metadata:
     environment: production
     platform: aws-ec2
   annotations:
-    # Gunakan NGINX ingress controller
     kubernetes.io/ingress.class: "nginx"
-
-    # Tidak perlu rewrite untuk root path
-    nginx.ingress.kubernetes.io/rewrite-target: /
-
-    # Disable SSL redirect (HTTP saja untuk evaluasi)
+    # Menghapus baris rewrite-target agar path asli diteruskan utuh ke aplikasi
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
-
-    # Proxy timeout settings untuk stabilitas
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
-
 spec:
   rules:
-    # Tanpa host → menangkap semua request dari IP manapun
-    # Bisa diakses via: http://<IP_PUBLIK_EC2>:<ingress-port>
     - http:
         paths:
           - path: /
