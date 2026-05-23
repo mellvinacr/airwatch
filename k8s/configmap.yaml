@@ -1,0 +1,26 @@
+# ─────────────────────────────────────────────────────────────
+# ConfigMap: airwatch-config
+# Menyimpan konfigurasi aplikasi yang diinjeksikan sebagai
+# environment variables ke dalam Pod (tanpa rebuild image)
+# ─────────────────────────────────────────────────────────────
+
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: airwatch-config
+  namespace: airwatch
+  labels:
+    app: airwatch
+data:
+  # Nama dan versi aplikasi
+  APP_NAME: "AirWatch"
+  APP_VERSION: "1.0.0"
+
+  # Port yang digunakan Express server
+  PORT: "3000"
+
+  # Environment
+  NODE_ENV: "production"
+
+  # Deskripsi aplikasi (untuk logging)
+  APP_DESCRIPTION: "Air Quality Monitoring - SDG 11 & SDG 13"

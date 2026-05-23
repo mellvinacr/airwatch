@@ -1,0 +1,81 @@
+# ─────────────────────────────────────────────────────────────
+# Deployment: airwatch-deployment
+# Mengelola siklus hidup Pod AirWatch.
+# Memastikan jumlah replica aktual = desired (self-healing).
+# ─────────────────────────────────────────────────────────────
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: airwatch-deployment
+  namespace: airwatch
+  labels:
+    app: airwatch
+    tier: frontend
+spec:
+  # Jumlah Pod yang diinginkan (HPA akan mengatur ini secara dinamis)
+  replicas: 3
+
+  # Selector untuk menemukan Pod yang dikelola deployment ini
+  selector:
+    matchLabels:
+      app: airwatch
+
+  # Strategi update: RollingUpdate (tanpa downtime)
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1        # Maksimal 1 Pod baru ditambah saat update
+      maxUnavailable: 0  # Tidak boleh ada Pod yang mati saat update
+
+  # Template Pod
+  template:
+    metadata:
+      labels:
+        app: airwatch
+        tier: frontend
+    spec:
+      containers:
+        - name: airwatch
+          # SUDAH DIUBAH: Mengarah ke Docker Hub cloud kamu yang valid
+          image: 1752104/airwatch:v1.0.0
+
+          # SUDAH DIUBAH: Wajib Always untuk deployment di server cloud AWS
+          imagePullPolicy: Always
+
+          # Port yang di-expose kontainer
+          ports:
+            - containerPort: 3000
+              name: http
+
+          # Inject environment dari ConfigMap
+          envFrom:
+            - configMapRef:
+                name: airwatch-config
+
+          # Resource limits (WAJIB untuk HPA bekerja)
+          resources:
+            requests:
+              cpu: "100m"      # 0.1 CPU core
+              memory: "128Mi"  # 128 MB RAM
+            limits:
+              cpu: "300m"      # 0.3 CPU core
+              memory: "256Mi"  # 256 MB RAM
+
+          # Liveness Probe: K8s restart pod jika ini gagal
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 10
+            periodSeconds: 15
+            failureThreshold: 3
+
+          # Readiness Probe: K8s kirim traffic hanya jika ini sukses
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3000
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            failureThreshold: 3

@@ -1,0 +1,28 @@
+# ─────────────────────────────────────────────────────────────
+# Service: airwatch-service
+# Bertindak sebagai Load Balancer internal yang stabil.
+# Mengarahkan trafik ke Pod yang tersedia berdasarkan label selector.
+# Type NodePort: memungkinkan akses dari luar cluster (Minikube)
+# ─────────────────────────────────────────────────────────────
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: airwatch-service
+  namespace: airwatch
+  labels:
+    app: airwatch
+spec:
+  # NodePort: dapat diakses via <Node-IP>:<nodePort>
+  type: NodePort
+
+  # Pilih Pod dengan label app=airwatch
+  selector:
+    app: airwatch
+
+  ports:
+    - name: http
+      protocol: TCP
+      port: 80          # Port Service (internal cluster)
+      targetPort: 3000  # Port di dalam container (Express)
+      nodePort: 30080   # Port di Node (akses dari luar: localhost:30080)

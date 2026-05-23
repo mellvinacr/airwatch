@@ -1,0 +1,50 @@
+# ─────────────────────────────────────────────────────────────
+# HorizontalPodAutoscaler: airwatch-hpa
+# Secara otomatis menambah/mengurangi jumlah Pod berdasarkan
+# penggunaan CPU. Ini adalah inti dari Auto-Scaling K8s.
+#
+# Alur: Trafik naik → CPU Pod naik > 50% → HPA tambah Pod
+#       Trafik turun → CPU Pod turun → HPA kurangi Pod
+# ─────────────────────────────────────────────────────────────
+
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: airwatch-hpa
+  namespace: airwatch
+  labels:
+    app: airwatch
+spec:
+  # Target yang akan di-scale (merujuk ke Deployment)
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: airwatch-deployment
+
+  # Batas jumlah Pod
+  minReplicas: 2  # Minimal selalu ada 2 Pod (High Availability)
+  maxReplicas: 8  # Maksimal 8 Pod saat traffic spike
+
+  # Metrik pemicu scaling
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 50  # Scale up jika CPU rata-rata > 50%
+
+  # Perilaku scaling (opsional, best practice)
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30   # Tunggu 30 detik sebelum scale up lagi
+      policies:
+        - type: Pods
+          value: 2                      # Tambah max 2 Pod sekaligus
+          periodSeconds: 60
+    scaleDown:
+      stabilizationWindowSeconds: 300  # Tunggu 5 menit sebelum scale down
+      policies:
+        - type: Pods
+          value: 1                     # Kurangi 1 Pod per menit
+          periodSeconds: 60

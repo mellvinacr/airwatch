@@ -1,0 +1,39 @@
+# ─────────────────────────────────────────────────────────────
+# Ingress: airwatch-ingress
+# Pintu gerbang (gateway) dari internet ke Service.
+# Mengatur routing berbasis hostname/path.
+#
+# Prasyarat: nginx ingress controller harus aktif
+#   minikube addons enable ingress
+# ─────────────────────────────────────────────────────────────
+
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: airwatch-ingress
+  namespace: airwatch
+  labels:
+    app: airwatch
+  annotations:
+    # Gunakan NGINX ingress controller
+    kubernetes.io/ingress.class: "nginx"
+
+    # Rewrite path (opsional)
+    nginx.ingress.kubernetes.io/rewrite-target: /
+
+    # Tambahkan header keamanan
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+
+spec:
+  rules:
+    # Routing berdasarkan hostname
+    - host: airwatch.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: airwatch-service
+                port:
+                  number: 80

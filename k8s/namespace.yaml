@@ -1,0 +1,14 @@
+# ─────────────────────────────────────────────────────────────
+# Namespace: airwatch
+# Membuat ruang kerja terisolasi untuk semua resource AirWatch
+# ─────────────────────────────────────────────────────────────
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: airwatch
+  labels:
+    app: airwatch
+    project: evaluasi-3
+    sdg: "11-13"
+    managed-by: kubernetes

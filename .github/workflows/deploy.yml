@@ -1,0 +1,54 @@
+name: CI/CD AirWatch Deployment
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and Push Docker Image
+        uses: docker/build-push-action@v4
+        with:
+          context: ./app
+          push: true
+          tags: 1752104/airwatch:v1.0.0
+
+  deploy-to-aws:
+    needs: build-and-push
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Deploy to AWS Kubernetes via SSH
+        uses: appleboy/ssh-action@v0.1.10
+        with:
+          host: 172.31.1.114  # Sesuai dengan IP Node Master AWS kamu
+          username: ubuntu
+          key: ${{ secrets.AWS_SSH_KEY }}
+          script: |
+            # Buat folder kurbernetes jika belum ada di AWS Master
+            mkdir -p ~/kurbernetes
+            
+            # Clone repo jika belum ada, atau pull update terbaru jika sudah ada
+            if [ ! -d "~/kurbernetes/airwatch" ]; then
+              git clone https://github.com/mellvinacr/airwatch.git ~/kurbernetes/airwatch
+            else
+              cd ~/kurbernetes/airwatch && git pull origin main
+            fi
+            
+            # Nyalakan manifest Kubernetes secara otomatis!
+            cd ~/kurbernetes/airwatch/k8s
+            kubectl apply -f .

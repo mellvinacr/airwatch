@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AirWatch — Monitoring Kualitas Udara Indonesia</title>
+  <meta name="description" content="Platform monitoring kualitas udara real-time untuk kota-kota di Indonesia. Mendukung SDG 11 dan SDG 13." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+  <style>
+    :root {
+      --bg-primary: #0a0f1e;
+      --bg-secondary: #0d1526;
+      --bg-card: #111827;
+      --bg-card-hover: #1a2236;
+      --border: rgba(255,255,255,0.07);
+      --border-bright: rgba(255,255,255,0.15);
+      --text-primary: #f1f5f9;
+      --text-secondary: #94a3b8;
+      --text-muted: #64748b;
+      --accent-blue: #3b82f6;
+      --accent-cyan: #06b6d4;
+      --accent-green: #22c55e;
+      --accent-yellow: #eab308;
+      --accent-orange: #f97316;
+      --accent-red: #ef4444;
+      --accent-purple: #a855f7;
+      --glow-blue: rgba(59,130,246,0.15);
+      --glow-cyan: rgba(6,182,212,0.15);
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+      overflow-x: hidden;
+    }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-primary); }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 3px; }
+
+    /* ── Background Glow ── */
+    .bg-glow {
+      position: fixed; inset: 0; pointer-events: none; z-index: 0;
+      background:
+        radial-gradient(ellipse 60% 40% at 20% 10%, rgba(59,130,246,0.08) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 50% at 80% 90%, rgba(6,182,212,0.06) 0%, transparent 70%);
+    }
+
+    /* ── Header ── */
+    header {
+      position: sticky; top: 0; z-index: 100;
+      background: rgba(10,15,30,0.85);
+      backdrop-filter: blur(20px);
+      border-bottom: 1px solid var(--border);
+      padding: 0 2rem;
+    }
+    .header-inner {
+      max-width: 1400px; margin: 0 auto;
+      display: flex; align-items: center; justify-content: space-between;
+      height: 64px; gap: 1rem;
+    }
+    .logo { display: flex; align-items: center; gap: 0.75rem; }
+    .logo-icon {
+      width: 36px; height: 36px;
+      background: linear-gradient(135deg, var(--accent-blue), var(--accent-cyan));
+      border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 1.1rem;
+      box-shadow: 0 0 20px rgba(59,130,246,0.4);
+    }
+    .logo-text { font-size: 1.25rem; font-weight: 800; letter-spacing: -0.5px; }
+    .logo-text span { color: var(--accent-cyan); }
+    .header-badges { display: flex; gap: 0.5rem; }
+    .badge {
+      font-size: 0.65rem; font-weight: 700; padding: 3px 8px; border-radius: 20px;
+      letter-spacing: 0.5px; text-transform: uppercase;
+    }
+    .badge-sdg11 { background: rgba(34,197,94,0.15); color: var(--accent-green); border: 1px solid rgba(34,197,94,0.3); }
+    .badge-sdg13 { background: rgba(59,130,246,0.15); color: var(--accent-blue); border: 1px solid rgba(59,130,246,0.3); }
+    .header-right { display: flex; align-items: center; gap: 1rem; }
+    .live-indicator { display: flex; align-items: center; gap: 0.5rem; font-size: 0.75rem; color: var(--accent-green); font-weight: 600; }
+    .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-green); animation: pulse-live 2s infinite; }
+    @keyframes pulse-live {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(34,197,94,0.5); }
+      50% { box-shadow: 0 0 0 6px rgba(34,197,94,0); }
+    }
+    #last-updated { font-size: 0.7rem; color: var(--text-muted); }
+    .btn-refresh {
+      background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3);
+      color: var(--accent-blue); padding: 6px 14px; border-radius: 8px;
+      font-size: 0.75rem; font-weight: 600; cursor: pointer; transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+    .btn-refresh:hover { background: rgba(59,130,246,0.25); transform: translateY(-1px); }
+
+    /* ── Main Layout ── */
+    main {
+      max-width: 1400px; margin: 0 auto;
+      padding: 2rem; position: relative; z-index: 1;
+    }
+
+    /* ── Section Header ── */
+    .section-header { margin-bottom: 1.25rem; }
+    .section-title {
+      font-size: 0.7rem; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 1.5px;
+      display: flex; align-items: center; gap: 0.5rem;
+    }
+    .section-title::before {
+      content: ''; display: block; width: 3px; height: 14px;
+      background: linear-gradient(to bottom, var(--accent-blue), var(--accent-cyan));
+      border-radius: 2px;
+    }
+
+    /* ── Summary Cards ── */
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1rem; margin-bottom: 2rem;
+    }
+    .summary-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.25rem 1.5rem;
+      transition: all 0.3s ease; position: relative; overflow: hidden;
+    }
+    .summary-card::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0;
+      height: 2px; background: linear-gradient(to right, var(--accent-blue), var(--accent-cyan));
+      opacity: 0; transition: opacity 0.3s;
+    }
+    .summary-card:hover { border-color: var(--border-bright); transform: translateY(-2px); }
+    .summary-card:hover::before { opacity: 1; }
+    .card-label { font-size: 0.7rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 0.5rem; }
+    .card-value { font-size: 2rem; font-weight: 800; line-height: 1; margin-bottom: 0.25rem; }
+    .card-sub { font-size: 0.75rem; color: var(--text-secondary); }
+    .card-icon { position: absolute; top: 1.25rem; right: 1.25rem; font-size: 1.5rem; opacity: 0.4; }
+
+    /* ── Main Grid ── */
+    .main-grid {
+      display: grid;
+      grid-template-columns: 1fr 380px;
+      gap: 1.5rem; margin-bottom: 2rem;
+    }
+    @media (max-width: 1100px) { .main-grid { grid-template-columns: 1fr; } }
+
+    /* ── City Cards Grid ── */
+    .cities-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+    }
+    .city-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.25rem;
+      cursor: pointer; transition: all 0.3s ease; position: relative; overflow: hidden;
+    }
+    .city-card:hover { border-color: var(--border-bright); transform: translateY(-3px); box-shadow: 0 8px 30px rgba(0,0,0,0.3); }
+    .city-card.selected { border-color: var(--accent-blue); box-shadow: 0 0 0 1px var(--accent-blue), 0 8px 30px var(--glow-blue); }
+    .city-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 1rem; }
+    .city-name { font-size: 1rem; font-weight: 700; }
+    .city-province { font-size: 0.7rem; color: var(--text-muted); margin-top: 2px; }
+    .aqi-badge {
+      font-size: 1.5rem; font-weight: 800; padding: 6px 14px;
+      border-radius: 10px; line-height: 1; text-align: center;
+    }
+    .aqi-label { font-size: 0.55rem; font-weight: 600; opacity: 0.8; }
+    .pollutants-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-top: 0.75rem; }
+    .pollutant-item { background: rgba(255,255,255,0.03); border-radius: 8px; padding: 6px 8px; text-align: center; }
+    .pollutant-name { font-size: 0.6rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; }
+    .pollutant-value { font-size: 0.85rem; font-weight: 700; margin-top: 2px; }
+    .city-meta { display: flex; gap: 1rem; margin-top: 0.75rem; }
+    .city-meta-item { display: flex; align-items: center; gap: 0.3rem; font-size: 0.7rem; color: var(--text-secondary); }
+
+    /* ── Right Panel (Chart + Detail) ── */
+    .right-panel { display: flex; flex-direction: column; gap: 1rem; }
+    .panel-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: 16px; padding: 1.25rem;
+    }
+    .panel-title { font-size: 0.85rem; font-weight: 700; margin-bottom: 1rem; display: flex; align-items: center; gap: 0.5rem; }
+    .chart-container { position: relative; height: 200px; }
+
+    /* ── Pod Info Banner ── */
+    .pod-banner {
+      background: linear-gradient(135deg, rgba(59,130,246,0.1), rgba(6,182,212,0.08));
+      border: 1px solid rgba(59,130,246,0.2);
+      border-radius: 12px; padding: 1rem 1.25rem;
+      display: flex; align-items: center; gap: 1rem;
+      margin-bottom: 2rem; font-size: 0.8rem;
+    }
+    .pod-banner-icon { font-size: 1.5rem; }
+    .pod-banner-title { font-weight: 700; color: var(--accent-cyan); margin-bottom: 2px; }
+    .pod-banner-detail { color: var(--text-secondary); font-size: 0.72rem; }
+    #pod-name { color: var(--accent-blue); font-weight: 700; font-family: monospace; }
+
+    /* ── AQI Scale ── */
+    .aqi-scale { display: flex; gap: 4px; margin-top: 1rem; }
+    .aqi-scale-item { flex: 1; height: 6px; border-radius: 3px; }
+    .aqi-scale-labels { display: flex; justify-content: space-between; font-size: 0.6rem; color: var(--text-muted); margin-top: 4px; }
+
+    /* ── Ranking ── */
+    .ranking-list { display: flex; flex-direction: column; gap: 0.5rem; }
+    .ranking-item {
+      display: flex; align-items: center; gap: 0.75rem;
+      padding: 8px 10px; border-radius: 10px;
+      background: rgba(255,255,255,0.02); border: 1px solid transparent;
+      transition: all 0.2s; cursor: pointer;
+    }
+    .ranking-item:hover { border-color: var(--border); background: rgba(255,255,255,0.04); }
+    .rank-num { font-size: 0.7rem; font-weight: 700; color: var(--text-muted); width: 18px; }
+    .rank-name { flex: 1; font-size: 0.8rem; font-weight: 600; }
+    .rank-bar-wrap { width: 80px; }
+    .rank-bar { height: 5px; border-radius: 3px; transition: width 0.8s ease; }
+    .rank-aqi { font-size: 0.75rem; font-weight: 700; width: 32px; text-align: right; }
+
+    /* ── Bottom Grid ── */
+    .bottom-grid {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 1.5rem; margin-bottom: 2rem;
+    }
+    @media (max-width: 768px) { .bottom-grid { grid-template-columns: 1fr; } }
+
+    /* ── Pollutant Detail ── */
+    .pollutant-bars { display: flex; flex-direction: column; gap: 0.75rem; }
+    .p-bar-wrap { display: flex; align-items: center; gap: 0.75rem; }
+    .p-bar-label { font-size: 0.72rem; font-weight: 700; width: 40px; color: var(--text-secondary); }
+    .p-bar-track { flex: 1; height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; }
+    .p-bar-fill { height: 100%; border-radius: 4px; transition: width 1s ease; }
+    .p-bar-val { font-size: 0.72rem; font-weight: 700; width: 50px; text-align: right; color: var(--text-secondary); }
+
+    /* ── Footer ── */
+    footer {
+      border-top: 1px solid var(--border); padding: 1.5rem 2rem;
+      text-align: center; font-size: 0.72rem; color: var(--text-muted);
+    }
+    footer strong { color: var(--text-secondary); }
+
+    /* ── Loading ── */
+    .loading-overlay {
+      position: fixed; inset: 0; background: var(--bg-primary);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 9999; flex-direction: column; gap: 1rem;
+      transition: opacity 0.5s ease;
+    }
+    .loading-spinner {
+      width: 48px; height: 48px; border: 3px solid rgba(59,130,246,0.2);
+      border-top-color: var(--accent-blue); border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { font-size: 0.85rem; color: var(--text-secondary); }
+
+    /* ── Animations ── */
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(20px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeInUp 0.5s ease forwards; }
+  </style>
+</head>
+<body>
+  <!-- Loading Screen -->
+  <div class="loading-overlay" id="loading">
+    <div class="loading-spinner"></div>
+    <div class="loading-text">Memuat data kualitas udara...</div>
+  </div>
+
+  <div class="bg-glow"></div>
+
+  <!-- Header -->
+  <header>
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">🌍</div>
+        <div>
+          <div class="logo-text">Air<span>Watch</span></div>
+        </div>
+        <div class="header-badges">
+          <span class="badge badge-sdg11">SDG 11</span>
+          <span class="badge badge-sdg13">SDG 13</span>
+        </div>
+      </div>
+      <div class="header-right">
+        <div class="live-indicator">
+          <div class="live-dot"></div>
+          LIVE
+        </div>
+        <div id="last-updated">—</div>
+        <button class="btn-refresh" id="btn-refresh" onclick="loadData()">↻ Refresh</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main>
+
+    <!-- Pod Info Banner -->
+    <div class="pod-banner fade-in">
+      <div class="pod-banner-icon">☸️</div>
+      <div>
+        <div class="pod-banner-title">Kubernetes Pod Info</div>
+        <div class="pod-banner-detail">
+          Served by Pod: <span id="pod-name">loading...</span> &nbsp;|&nbsp;
+          Version: <span id="app-version">—</span> &nbsp;|&nbsp;
+          Uptime: <span id="app-uptime">—</span>s
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary Cards -->
+    <div class="section-header">
+      <div class="section-title">Ringkasan Nasional</div>
+    </div>
+    <div class="summary-grid" id="summary-grid">
+      <div class="summary-card fade-in">
+        <div class="card-icon">🏙️</div>
+        <div class="card-label">Kota Dipantau</div>
+        <div class="card-value" id="total-cities" style="color: var(--accent-cyan)">—</div>
+        <div class="card-sub">Kota aktif</div>
+      </div>
+      <div class="summary-card fade-in" style="animation-delay:0.05s">
+        <div class="card-icon">📊</div>
+        <div class="card-label">Rata-rata AQI</div>
+        <div class="card-value" id="avg-aqi" style="color: var(--accent-yellow)">—</div>
+        <div class="card-sub" id="avg-status">Memuat...</div>
+      </div>
+      <div class="summary-card fade-in" style="animation-delay:0.1s">
+        <div class="card-icon">😷</div>
+        <div class="card-label">Kota Terburuk</div>
+        <div class="card-value" id="worst-city" style="color: var(--accent-red); font-size:1.3rem">—</div>
+        <div class="card-sub" id="worst-aqi">AQI: —</div>
+      </div>
+      <div class="summary-card fade-in" style="animation-delay:0.15s">
+        <div class="card-icon">😊</div>
+        <div class="card-label">Kota Terbaik</div>
+        <div class="card-value" id="best-city" style="color: var(--accent-green); font-size:1.3rem">—</div>
+        <div class="card-sub" id="best-aqi">AQI: —</div>
+      </div>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="main-grid">
+      <!-- City Cards -->
+      <div>
+        <div class="section-header">
+          <div class="section-title">Status Kota Real-time</div>
+        </div>
+        <div class="cities-grid" id="cities-grid">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+
+      <!-- Right Panel -->
+      <div class="right-panel">
+        <!-- Trend Chart -->
+        <div class="panel-card">
+          <div class="panel-title">📈 Tren AQI 7 Hari — <span id="chart-city-name" style="color:var(--accent-cyan)">Pilih Kota</span></div>
+          <div class="chart-container">
+            <canvas id="trend-chart"></canvas>
+          </div>
+        </div>
+
+        <!-- Ranking -->
+        <div class="panel-card">
+          <div class="panel-title">🏆 Ranking Kualitas Udara</div>
+          <div class="ranking-list" id="ranking-list">
+            <!-- Rendered by JS -->
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Grid -->
+    <div class="bottom-grid">
+      <!-- AQI Scale -->
+      <div class="panel-card">
+        <div class="panel-title">📋 Skala Indeks Kualitas Udara (AQI)</div>
+        <div class="aqi-scale">
+          <div class="aqi-scale-item" style="background:#22c55e"></div>
+          <div class="aqi-scale-item" style="background:#eab308"></div>
+          <div class="aqi-scale-item" style="background:#f97316"></div>
+          <div class="aqi-scale-item" style="background:#ef4444"></div>
+          <div class="aqi-scale-item" style="background:#a855f7"></div>
+          <div class="aqi-scale-item" style="background:#7f1d1d"></div>
+        </div>
+        <div class="aqi-scale-labels">
+          <span>0 Baik</span>
+          <span>51 Sedang</span>
+          <span>101 Sensitif</span>
+          <span>151 Tdk Sehat</span>
+          <span>201 Sangat Tdk Sehat</span>
+          <span>301 Bahaya</span>
+        </div>
+        <div style="margin-top:1.25rem">
+          <div class="panel-title" style="margin-bottom:0.75rem">🧪 Detail Polutan — <span id="detail-city" style="color:var(--accent-cyan)">Pilih kota</span></div>
+          <div class="pollutant-bars" id="pollutant-bars">
+            <div style="color: var(--text-muted); font-size:0.8rem; padding: 1rem 0; text-align:center;">
+              Klik kartu kota untuk melihat detail polutan
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Info SDG -->
+      <div class="panel-card" style="background: linear-gradient(135deg, rgba(59,130,246,0.08), rgba(6,182,212,0.05));">
+        <div class="panel-title">🌱 Dampak & SDG Alignment</div>
+        <div style="display: flex; flex-direction: column; gap: 1rem;">
+          <div style="padding: 0.75rem; background: rgba(34,197,94,0.08); border: 1px solid rgba(34,197,94,0.15); border-radius: 10px;">
+            <div style="font-size:0.75rem; font-weight:700; color:var(--accent-green); margin-bottom:0.3rem;">🏙️ SDG 11 — Kota Berkelanjutan</div>
+            <div style="font-size:0.72rem; color:var(--text-secondary); line-height:1.5;">
+              Memantau kualitas udara perkotaan untuk menciptakan lingkungan yang aman dan sehat bagi warga kota, mendukung perencanaan tata kota yang berkelanjutan.
+            </div>
+          </div>
+          <div style="padding: 0.75rem; background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.15); border-radius: 10px;">
+            <div style="font-size:0.75rem; font-weight:700; color:var(--accent-blue); margin-bottom:0.3rem;">🌍 SDG 13 — Aksi Iklim</div>
+            <div style="font-size:0.72rem; color:var(--text-secondary); line-height:1.5;">
+              Meningkatkan kesadaran masyarakat tentang polusi udara sebagai dampak perubahan iklim dan mendorong aksi nyata pengurangan emisi karbon.
+            </div>
+          </div>
+          <div style="padding: 0.75rem; background: rgba(255,255,255,0.02); border: 1px solid var(--border); border-radius: 10px;">
+            <div style="font-size:0.72rem; font-weight:700; color:var(--text-secondary); margin-bottom:0.5rem;">⚠️ Dampak Kualitas Udara Buruk</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.4rem;">
+              <div style="font-size:0.68rem; color:var(--text-muted); display:flex; gap:0.3rem; align-items:center;"><span style="color:var(--accent-red)">●</span> Penyakit pernapasan</div>
+              <div style="font-size:0.68rem; color:var(--text-muted); display:flex; gap:0.3rem; align-items:center;"><span style="color:var(--accent-red)">●</span> Gangguan jantung</div>
+              <div style="font-size:0.68rem; color:var(--text-muted); display:flex; gap:0.3rem; align-items:center;"><span style="color:var(--accent-orange)">●</span> Hujan asam</div>
+              <div style="font-size:0.68rem; color:var(--text-muted); display:flex; gap:0.3rem; align-items:center;"><span style="color:var(--accent-orange)">●</span> Pemanasan global</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    <strong>AirWatch</strong> — Modul Komputasi Awan, Evaluasi 3 &nbsp;|&nbsp;
+    Tema: SDG 11 (Kota Berkelanjutan) &amp; SDG 13 (Aksi Iklim) &nbsp;|&nbsp;
+    Deploy on <strong>Kubernetes</strong> ☸️
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
