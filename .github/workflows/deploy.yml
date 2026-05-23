@@ -35,7 +35,7 @@ jobs:
       - name: Deploy to AWS Kubernetes via SSH
         uses: appleboy/ssh-action@v0.1.10
         with:
-          host: 172.31.1.114  # Sesuai dengan IP Node Master AWS kamu
+          host: 32.197.48.170
           username: ubuntu
           key: ${{ secrets.AWS_SSH_KEY }}
           script: |
