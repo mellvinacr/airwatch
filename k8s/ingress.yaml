@@ -8,14 +8,19 @@ metadata:
     environment: production
     platform: aws-ec2
   annotations:
+    # Memastikan backward-compatibility untuk controller nginx
     kubernetes.io/ingress.class: "nginx"
-    # Menghapus baris rewrite-target agar path asli diteruskan utuh ke aplikasi
+    # HTTP saja untuk kebutuhan evaluasi praktikum
     nginx.ingress.kubernetes.io/ssl-redirect: "false"
+    # Proxy timeout untuk stabilitas koneksi pod
     nginx.ingress.kubernetes.io/proxy-connect-timeout: "30"
     nginx.ingress.kubernetes.io/proxy-read-timeout: "30"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "30"
 spec:
+  # WAJIB di AWS Bare-Metal: Menegaskan bahwa manifest ini milik ingress-nginx
+  ingressClassName: nginx
   rules:
+    # Tanpa kolom host agar otomatis menangkap alamat IP Publik AWS EC2 manapun
     - http:
         paths:
           - path: /

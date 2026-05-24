@@ -24,3 +24,14 @@ data:
 
   # Deskripsi aplikasi (untuk logging)
   APP_DESCRIPTION: "Air Quality Monitoring - SDG 11 & SDG 13"
+
+  # ── WAQI API Configuration ──────────────────────────────────
+  # URL endpoint WAQI (World Air Quality Index)
+  WAQI_API_URL: "https://api.waqi.info"
+
+  # Aktifkan mode real API (true = pakai WAQI, false = simulasi)
+  # Token disimpan di Secret terpisah (airwatch-secret)
+  USE_REAL_API: "true"
+
+  # Cache TTL dalam menit (hemat API quota, default 10 menit)
+  CACHE_TTL_MINUTES: "10"

@@ -1,2 +1,5 @@
 node_modules/
 .env
+
+# Jangan push secret ke GitHub — apply manual ke cluster!
+k8s/secret.yaml

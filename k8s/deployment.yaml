@@ -48,10 +48,13 @@ spec:
             - containerPort: 3000
               name: http
 
-          # Inject environment dari ConfigMap
+          # Inject environment dari ConfigMap (konfigurasi umum)
+          # dan Secret (data sensitif: API token)
           envFrom:
             - configMapRef:
                 name: airwatch-config
+            - secretRef:
+                name: airwatch-secret
 
           # Resource limits (WAJIB untuk HPA bekerja)
           resources:
